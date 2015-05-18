@@ -72,6 +72,14 @@ class chronopostpickme extends base {
       isset($_GET['action']) && $_GET['action']=='edit') {
        $this->updateDatabase();
     }
+    
+    //auto-update
+    $js_file = $_SERVER['DOCUMENT_ROOT'].'/chronopostpickme.js';
+        
+    if (!(file_exists($js_file) && (time() - filemtime($js_file)) < (3600*24) /* 1day */ )){
+		$this->updateDatabase();
+	}    
+    
 
     if ( ($this->enabled == true) && ((int)MODULE_SHIPPING_CHRONOPOSTPICKME_ZONE > 0) ) {
       $check_flag = false;
@@ -106,7 +114,7 @@ class chronopostpickme extends base {
 
     $title = MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_WAY;
     if ($_POST['shipping'] == 'chronopostpickme_chronopostpickme') {
-      $title = 'ChronoPost PickMe - '.$this->getStore($_POST['chronopostpickme_store']);
+      $title = 'ChronoPost PickUp - '.$this->getStore($_POST['chronopostpickme_store']);
     }
 
     $this->quotes = array('id' => $this->code,
@@ -148,7 +156,7 @@ class chronopostpickme extends base {
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Tax Basis', 'MODULE_SHIPPING_CHRONOPOSTPICKME_TAX_BASIS', 'Shipping', 'On what basis is Shipping Tax calculated. Options are<br />Shipping - Based on customers Shipping Address<br />Billing Based on customers Billing address<br />Store - Based on Store address if Billing/Shipping Zone equals Store zone', '6', '0', 'zen_cfg_select_option(array(\'Shipping\', \'Billing\'), ', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Shipping Zone', 'MODULE_SHIPPING_CHRONOPOSTPICKME_ZONE', '0', 'If a zone is selected, only enable this shipping method for that zone.', '6', '0', 'zen_get_zone_class_title', 'zen_cfg_pull_down_zone_classes(', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Sort Order', 'MODULE_SHIPPING_CHRONOPOSTPICKME_SORT_ORDER', '0', 'Sort order of display.', '6', '0', now())");
-    $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('WebService Address', 'MODULE_SHIPPING_CHRONOPOSTPICKME_WEBSERVICE', 'https://83.240.239.170:7554/ChronoWSB2CPointsv3/GetB2CPoints_v3Service?wsdl', 'WebService Address', '6', '0', now())");
+    $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('WebService Address', 'MODULE_SHIPPING_CHRONOPOSTPICKME_WEBSERVICE', 'http://83.240.239.170:7790/ChronoWSB2CPointsv3/GetB2CPoints_v3Service?wsdl', 'WebService Address', '6', '0', now())");
 
     $db->Execute("CREATE TABLE IF NOT EXISTS `chronopost_pickme_shop_orders` (
       `id_order` int(10) unsigned NOT NULL,
@@ -203,12 +211,15 @@ class chronopostpickme extends base {
     $string = $this->webservice_adress;
 
     if ($string == '') {
-      $string = "https://83.240.239.170:7554/ChronoWSB2CPointsv3/GetB2CPoints_v3Service?wsdl";
+      $string = "http://83.240.239.170:7790/ChronoWSB2CPointsv3/GetB2CPoints_v3Service?wsdl";
     }
     try {
       $client = new SoapClient($string);
 
       $result = $client->getPointList_V3();
+      
+      $pickme_ids = array();
+      
       foreach ($result->return->lB2CPointsArr as $message) {
           $query = '
             INSERT INTO `chronopost_pickme_shops`
@@ -217,7 +228,18 @@ class chronopostpickme extends base {
             ON DUPLICATE KEY UPDATE pickme_id=pickme_id
             ';
           $db->Execute($query);
+          
+          $pickme_ids[] = $message->Number;
+          
       }
+      
+		if (count($pickme_ids)) {
+			$pickme_id_str = "'".implode("','",$pickme_ids)."'";
+			$delete_query = "DELETE FROM `chronopost_pickme_shops` WHERE pickme_id NOT IN ($pickme_id_str)";
+			$db->Execute($delete_query);
+		}      
+      
+      
     } catch (Exception $e) {
       return true;
     }

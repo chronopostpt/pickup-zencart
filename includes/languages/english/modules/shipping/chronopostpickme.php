@@ -21,10 +21,10 @@
 //
 
 
-define('MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_TITLE', 'ChronoPost PickMe');
-define('MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_DESCRIPTION', 'ChronoPost PickMe');
+define('MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_TITLE', 'ChronoPost PickUp');
+define('MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_DESCRIPTION', 'ChronoPost PickUp');
 define(
 	'MODULE_SHIPPING_CHRONOPOSTPICKME_TEXT_WAY',
-	'ChronoPost PickMe <span id="chronopostpickmeHolder"></span><script defer src="chronopostpickme.js"></script>'
+	'ChronoPost PickUp <span id="chronopostpickmeHolder"></span><script defer src="chronopostpickme.js"></script>'
 );
 ?>
